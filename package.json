@@ -6,7 +6,9 @@
   "scripts": {
     "test":
       "export NODE_ENV=test || SET \"NODE_ENV=test\" && mocha **/*.test.js -R nyan",
-    "test-watch": "nodemon --exec \"npm test\""
+    "test-watch": "nodemon --exec \"npm test\"",
+    "coverage":
+      "export NODE_ENV=test || SET \"NODE_ENV=test\" && istanbul cover _mocha -- --ui bdd -R nyan -t 5000 $(find server -name '*.test.js')"
   },
   "keywords": [],
   "author": "",
@@ -17,10 +19,13 @@
   "dependencies": {
     "await-to-js": "^2.0.1",
     "body-parser": "^1.18.2",
+    "crypto-js": "^3.1.9-1",
     "express": "^4.16.2",
+    "jsonwebtoken": "^8.1.0",
     "lodash": "^4.17.4",
     "mongodb": "^3.0.0-rc0",
-    "mongoose": "^4.13.6"
+    "mongoose": "^4.13.6",
+    "validator": "^9.2.0"
   },
   "devDependencies": {
     "babel-eslint": "^8.1.0",
@@ -31,6 +36,7 @@
     "eslint-plugin-import": "^2.8.0",
     "eslint-plugin-jsx-a11y": "^6.0.2",
     "eslint-plugin-react": "^7.5.1",
+    "istanbul": "1.0.0-alpha.2",
     "karma-nyan-reporter": "^0.2.5",
     "mocha": "^4.0.1",
     "prettier-eslint": "^8.2.2",

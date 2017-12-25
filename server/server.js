@@ -96,6 +96,22 @@ app.patch('/todos/:id', async (req, res) => {
   return res.send({ todo: updatedTodo });
 });
 
+app.post('/users', async (req, res) => {
+  const body = pick(req.body, ['email', 'password']);
+  const user = new User(body);
+  const [err] = await to(user.save());
+  if (err) {
+    res.status(400).send(err);
+  } else {
+    const [tokenErr, token] = await to(user.generateAuthToken());
+    if (tokenErr) {
+      res.status(400).send({ tokenErr });
+    } else {
+      res.header('x-auth', token).send(user);
+    }
+  }
+});
+
 // eslint-disable-next-line no-console
 app.listen(3000, () => console.log('started on port 3000 '));
 
