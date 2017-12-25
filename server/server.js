@@ -8,7 +8,7 @@ const { isBoolean, pick } = require('lodash');
 const { mongoose } = require('./db/mongoose');
 const { Todo } = require('./models/todo');
 const { User } = require('./models/user');
-// const { to } = require('./util/to');
+const { authenticate } = require('./middleware');
 
 const app = express();
 app.use(bodyParser.json());
@@ -110,6 +110,10 @@ app.post('/users', async (req, res) => {
       res.header('x-auth', token).send(user);
     }
   }
+});
+
+app.get('/users/me', authenticate, async (req, res) => {
+  res.send(req.user);
 });
 
 // eslint-disable-next-line no-console
