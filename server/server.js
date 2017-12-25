@@ -4,7 +4,6 @@ const bodyParser = require('body-parser');
 const { to } = require('await-to-js');
 const { ObjectID } = require('mongodb');
 const { isBoolean, pick } = require('lodash');
-
 const { mongoose } = require('./db/mongoose');
 const { Todo } = require('./models/todo');
 const { User } = require('./models/user');

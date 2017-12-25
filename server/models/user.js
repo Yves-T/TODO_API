@@ -2,6 +2,13 @@ const mongoose = require('mongoose');
 const validator = require('validator');
 const jwt = require('jsonwebtoken');
 const { pick } = require('lodash');
+const bcrypt = require('bcryptjs');
+const { promisify } = require('util');
+const { to } = require('await-to-js');
+
+const genSaltAsync = promisify(bcrypt.genSalt);
+const hashAsync = promisify(bcrypt.hash);
+const compareAsync = promisify(bcrypt.compare);
 
 const TokenSchema = require('./token');
 
@@ -61,6 +68,28 @@ UserSchema.statics.findByToken = function(token) {
     'tokens.access': 'auth'
   });
 };
+
+UserSchema.pre('save', async function(next) {
+  const user = this;
+  if (user.isModified('password')) {
+    genSaltAsync(10).then(salt =>
+      hashAsync(user.password, salt).then(hash => {
+        user.password = hash;
+        user.save();
+        next();
+      })
+    );
+    let err = null;
+    let salt = null;
+    let hash = null;
+    const savedUser = null;
+
+    [err, salt] = await to(genSaltAsync(10));
+    [err, hash] = await to(hashAsync(user.password, salt));
+    user.password = hash;
+  }
+  next();
+});
 
 const User = mongoose.model('User', UserSchema);
 

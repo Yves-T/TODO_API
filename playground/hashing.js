@@ -1,5 +1,10 @@
 const { SHA256 } = require('crypto-js');
 const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const { promisify } = require('util');
+const genSaltAsync = promisify(bcrypt.genSalt);
+const hashAsync = promisify(bcrypt.hash);
+const compareAsync = promisify(bcrypt.compare);
 
 // ==================================================
 // principle JWT token without jsonwebtoken library
@@ -48,3 +53,32 @@ console.log('token:', jwtToken);
 // console.log(typeof salt);
 const decoded = jwt.verify(jwtToken, salt);
 console.log('decoded:', decoded);
+console.log('END JWT demo');
+console.log('======================================================');
+
+// ===============================================
+// principle bcrypt
+// ===============================================
+const bryptPassword = '123abc';
+const genSaltPromise = genSaltAsync(10).then(salt => {
+  return hashAsync(bryptPassword, salt).then(hash => {
+    return { hash, salt };
+  });
+});
+
+const hashedPassword =
+  '$2a$10$6sgBPvsva8Uty9ZspIiN.eIer.Hs4G0uypJ8A7KWFSsN/hR1UhOtq';
+
+const comparePromise = compareAsync(bryptPassword, hashedPassword).then(res => {
+  return res;
+});
+
+Promise.all([genSaltPromise, comparePromise]).then(results => {
+  console.log('Begin bcrypt demo');
+  console.log('======================================================');
+  console.log('hashed password:', results[0].hash);
+  console.log('salt:', results[0].salt);
+  console.log('res:', results[1]); // true
+  console.log('======================================================');
+  console.log('End bcrypt demo');
+});
