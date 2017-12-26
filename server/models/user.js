@@ -38,7 +38,7 @@ UserSchema.methods.generateAuthToken = async function() {
   const user = this;
   const access = 'auth';
   const token = jwt
-    .sign({ _id: user._id.toHexString(), access }, 'abc123')
+    .sign({ _id: user._id.toHexString(), access }, process.env.JWT_SECRET)
     .toString();
   await user.update({ $push: { tokens: { access, token } } });
 
@@ -57,7 +57,7 @@ UserSchema.statics.findByToken = function(token) {
   let decoded;
 
   try {
-    decoded = jwt.verify(token, 'abc123');
+    decoded = jwt.verify(token, process.env.JWT_SECRET);
   } catch (err) {
     return Promise.reject(err);
   }
@@ -72,19 +72,11 @@ UserSchema.statics.findByToken = function(token) {
 UserSchema.pre('save', async function(next) {
   const user = this;
   if (user.isModified('password')) {
-    genSaltAsync(10).then(salt =>
-      hashAsync(user.password, salt).then(hash => {
-        user.password = hash;
-        user.save();
-        next();
-      })
-    );
     let err = null;
     let salt = null;
     let hash = null;
-    const savedUser = null;
 
-    [err, salt] = await to(genSaltAsync(10));
+    [err, salt] = await to(genSaltAsync(process.env.SALT_ROUNDS));
     [err, hash] = await to(hashAsync(user.password, salt));
     user.password = hash;
   }

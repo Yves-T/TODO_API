@@ -4,31 +4,18 @@ const request = require('supertest');
 const { to } = require('await-to-js');
 const { ObjectID } = require('mongodb');
 
-const { Todo } = require('../server/models/todo');
-const { app } = require('../server/server');
+const { Todo } = require('../models/todo');
+const { User } = require('../models/user');
+const { app } = require('../server');
+const { todos, populate, users } = require('./seed/seed');
 
 chai.use(dirtyChai);
 const { expect } = chai;
 
-const todos = [
-  {
-    text: 'First test todo',
-    _id: new ObjectID()
-  },
-  {
-    text: 'Second test todo',
-    _id: new ObjectID(),
-    completed: true,
-    completedAt: 123
-  }
-];
+beforeEach(populate);
 
-beforeEach(async () => {
-  await Todo.remove({});
-  await Todo.insertMany(todos);
-});
-
-describe('POST /todos', () => {
+describe('POST /todos', function() {
+  this.timeout(5000);
   it('should create a new todo ', done => {
     const text = 'Test todo text';
 
@@ -48,16 +35,18 @@ describe('POST /todos', () => {
         try {
           expect(foundTodos).to.have.length(1);
           expect(foundTodos[0]).property('text', text);
+          return done();
         } catch (someError) {
           return done(someError);
         }
-
-        return done();
       });
   });
 });
 
-describe('GET /todos', () => {
+describe('GET /todos', function() {
+  this.timeout(5000);
+  // beforeEach(populateTodos);
+  // afterEach(after);
   it('should get all todos', done => {
     request(app)
       .get('/todos')
@@ -67,7 +56,10 @@ describe('GET /todos', () => {
   });
 });
 
-describe('DELETE /todos/:id', () => {
+describe('DELETE /todos/:id', function() {
+  this.timeout(5000);
+  // beforeEach(populateTodos);
+  // afterEach(after);
   it('should remove a todo', done => {
     const hexId = todos[1]._id.toHexString();
 
@@ -107,7 +99,10 @@ describe('DELETE /todos/:id', () => {
   });
 });
 
-describe('PATCH /todos/:id', () => {
+describe('PATCH /todos/:id', function() {
+  this.timeout(5000);
+  // beforeEach(populateTodos);
+  // afterEach(after);
   it('should update the todo', done => {
     const hexId = todos[0]._id.toHexString();
     const text = 'This should be the new text';
@@ -141,6 +136,71 @@ describe('PATCH /todos/:id', () => {
         expect(res.body.todo.completed).to.be.false();
         expect(res.body.todo.completedAt).to.be.a('null');
       })
+      .end(done);
+  });
+});
+
+describe('GET /users/me', () => {
+  it('should return user if authenticated', done => {
+    request(app)
+      .get('/users/me')
+      .set('x-auth', users[0].tokens[0].token)
+      .expect(200)
+      .expect(res => {
+        expect(res.body._id).to.equal(users[0]._id.toHexString());
+        expect(res.body.email).to.equal(users[0].email);
+      })
+      .end(done);
+  });
+
+  it('should return 404 if not authenticated', done => {
+    request(app)
+      .get('/users/me')
+      .expect(401)
+      .expect(res => {
+        expect(res.body).to.deep.equal({});
+      })
+      .end(done);
+  });
+});
+
+describe('POST /users', () => {
+  it('should create a user', done => {
+    const email = 'example@example.com';
+    const password = '123ndf';
+    request(app)
+      .post('/users')
+      .send({ email, password })
+      .expect(200)
+      .expect(res => {
+        expect(res.headers['x-auth']).to.exist();
+        expect(res.body._id).to.exist();
+      })
+      .end(err => {
+        if (err) {
+          return done(err);
+        }
+        User.findOne({ email }).then(user => {
+          expect(user).to.exist();
+          expect(user.password).to.not.equal(password);
+          done();
+        });
+      });
+  });
+
+  it('should return validation errors', done => {
+    request(app)
+      .post('/users')
+      .send({ email: 'and', password: '123' })
+      .expect(400)
+      .end(done);
+  });
+
+  it('should not create user if email in use', done => {
+    request(app)
+      .post('/users')
+      .send({ email: users[0].email, password: 'Password123!' })
+      .expect(400)
       .end(done);
   });
 });
