@@ -22,6 +22,7 @@ describe('POST /todos', function() {
 
     request(app)
       .post('/todos')
+      .set('x-auth', users[0].tokens[0].token)
       .send({ text })
       .expect(200)
       .expect(res => {
@@ -46,21 +47,39 @@ describe('POST /todos', function() {
 
 describe('GET /todos', function() {
   this.timeout(5000);
-  // beforeEach(populateTodos);
-  // afterEach(after);
   it('should get all todos', done => {
     request(app)
       .get('/todos')
+      .set('x-auth', users[0].tokens[0].token)
       .expect(200)
-      .expect(res => expect(res.body.todos).to.have.length(2))
+      .expect(res => expect(res.body.todos).to.have.length(1))
+      .end(done);
+  });
+});
+
+describe('GET /todos/:id', () => {
+  it('should not return todo doc created by another user', done => {
+    request(app)
+      .get(`/todos/${todos[1]._id.toHexString()}`)
+      .set('x-auth', users[0].tokens[0].token)
+      .expect(404)
+      .end(done);
+  });
+
+  it('should return todo doc created by another user', done => {
+    request(app)
+      .get(`/todos/${todos[0]._id.toHexString()}`)
+      .set('x-auth', users[0].tokens[0].token)
+      .expect(200)
+      .expect(res => {
+        expect(res.body.todo.text).to.equal(todos[0].text);
+      })
       .end(done);
   });
 });
 
 describe('DELETE /todos/:id', function() {
   this.timeout(5000);
-  // beforeEach(populateTodos);
-  // afterEach(after);
   it('should remove a todo', done => {
     const hexId = todos[1]._id.toHexString();
 
@@ -102,13 +121,12 @@ describe('DELETE /todos/:id', function() {
 
 describe('PATCH /todos/:id', function() {
   this.timeout(5000);
-  // beforeEach(populateTodos);
-  // afterEach(after);
   it('should update the todo', done => {
     const hexId = todos[0]._id.toHexString();
     const text = 'This should be the new text';
     request(app)
       .patch(`/todos/${hexId}`)
+      .set('x-auth', users[0].tokens[0].token)
       .send({
         completed: true,
         text
@@ -122,11 +140,26 @@ describe('PATCH /todos/:id', function() {
       .end(done);
   });
 
+  it('should not update the todo created by another user', done => {
+    const hexId = todos[0]._id.toHexString();
+    const text = 'This should be the new text';
+    request(app)
+      .patch(`/todos/${hexId}`)
+      .set('x-auth', users[1].tokens[0].token)
+      .send({
+        completed: true,
+        text
+      })
+      .expect(404)
+      .end(done);
+  });
+
   it('should clear completedAt when todo is not completed', done => {
     const hexId = todos[1]._id.toHexString();
     const text = 'This should be the new text!!!';
     request(app)
       .patch(`/todos/${hexId}`)
+      .set('x-auth', users[1].tokens[0].token)
       .send({
         completed: false,
         text

@@ -11,8 +11,8 @@ const { authenticate } = require('./middleware');
 
 const app = express();
 app.use(bodyParser.json());
-app.post('/todos', async (req, res) => {
-  const todo = new Todo({ text: req.body.text });
+app.post('/todos', authenticate, async (req, res) => {
+  const todo = new Todo({ text: req.body.text, _creator: req.user._id });
   const [err, success] = await to(todo.save());
   if (err) {
     res.status(400).send(err);
@@ -21,8 +21,8 @@ app.post('/todos', async (req, res) => {
   }
 });
 
-app.get('/todos', async (req, res) => {
-  const [err, todos] = await to(Todo.find({}));
+app.get('/todos', authenticate, async (req, res) => {
+  const [err, todos] = await to(Todo.find({ _creator: req.user._id }));
   if (err) {
     res.status(400).send(err);
   } else {
@@ -30,18 +30,20 @@ app.get('/todos', async (req, res) => {
   }
 });
 
-app.get('/todos/:id', async (req, res) => {
+app.get('/todos/:id', authenticate, async (req, res) => {
   const { id } = req.params;
   if (!ObjectID.isValid(id)) {
     return res.status(404).send();
   }
-  const [err, someTodo] = await to(Todo.findById(id));
+  const [err, someTodo] = await to(
+    Todo.findOne({ _id: id, _creator: req.user._id })
+  );
   if (err) {
     return res.status(400).send();
   }
 
   if (!someTodo) {
-    res.status(400).send();
+    return res.status(404).send();
   }
 
   return res.send({ todo: someTodo });
@@ -65,7 +67,7 @@ app.delete('/todos/:id', async (req, res) => {
   return res.send({ todo: removedTodo });
 });
 
-app.patch('/todos/:id', async (req, res) => {
+app.patch('/todos/:id', authenticate, async (req, res) => {
   const { id } = req.params;
   const body = pick(req.body, ['text', 'completed']);
 
@@ -81,7 +83,11 @@ app.patch('/todos/:id', async (req, res) => {
   }
 
   const [someError, updatedTodo] = await to(
-    Todo.findByIdAndUpdate(id, { $set: body }, { new: true })
+    Todo.findOneAndUpdate(
+      { _id: id, _creator: req.user._id },
+      { $set: body },
+      { new: true }
+    )
   );
 
   if (someError) {
