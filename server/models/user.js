@@ -28,7 +28,7 @@ const UserSchema = new mongoose.Schema({
   },
   password: {
     type: String,
-    require: true,
+    required: true,
     minLength: 6
   },
   tokens: [TokenSchema]
@@ -75,13 +75,26 @@ UserSchema.pre('save', async function(next) {
     let err = null;
     let salt = null;
     let hash = null;
-
-    [err, salt] = await to(genSaltAsync(process.env.SALT_ROUNDS));
+    [err, salt] = await to(genSaltAsync(parseInt(process.env.SALT_ROUNDS, 10)));
     [err, hash] = await to(hashAsync(user.password, salt));
     user.password = hash;
   }
   next();
 });
+
+UserSchema.statics.findByCredentials = async function(email, password) {
+  const User = this;
+  let user = null;
+  let err = null;
+  let compareResult = null;
+
+  [err, user] = await to(User.findOne({ email }));
+  if (user) {
+    [err, compareResult] = await to(compareAsync(password, user.password));
+    return compareResult ? user : false;
+  }
+  return false;
+};
 
 const User = mongoose.model('User', UserSchema);
 

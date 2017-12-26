@@ -115,6 +115,17 @@ app.get('/users/me', authenticate, async (req, res) => {
   res.send(req.user);
 });
 
+app.post('/users/login', async (req, res) => {
+  const body = pick(req.body, ['email', 'password']);
+  const user = await User.findByCredentials(body.email, body.password);
+  if (user) {
+    const [err, token] = await to(user.generateAuthToken());
+    if (!err) {
+      return res.header('x-auth', token).send(user);
+    }
+  }
+  return res.status(400).send();
+});
 // eslint-disable-next-line no-console
 app.listen(3000, () => console.log('started on port 3000 '));
 
