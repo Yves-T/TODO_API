@@ -3,6 +3,7 @@ const dirtyChai = require('dirty-chai');
 const request = require('supertest');
 const { to } = require('await-to-js');
 const { ObjectID } = require('mongodb');
+const jwt = require('jsonwebtoken');
 
 const { Todo } = require('../models/todo');
 const { User } = require('../models/user');
@@ -201,6 +202,52 @@ describe('POST /users', () => {
       .post('/users')
       .send({ email: users[0].email, password: 'Password123!' })
       .expect(400)
+      .end(done);
+  });
+});
+
+describe('POST /users/login', () => {
+  it('should login user and return auth token', done => {
+    request(app)
+      .post('/users/login')
+      .send({
+        email: users[1].email,
+        password: users[1].password
+      })
+      .expect(200)
+      .expect(res => {
+        expect(res.headers['x-auth']).to.exist();
+      })
+      .end((err, res) => {
+        if (err) {
+          return done(err);
+        }
+        return User.findById(users[1]._id)
+          .then(user => {
+            expect(user.tokens[0]).property('access', 'auth');
+            const tokenPayload = jwt.verify(
+              user.tokens[0].token,
+              process.env.JWT_SECRET
+            );
+            expect(tokenPayload._id).to.equal(user._id.toHexString());
+            expect(tokenPayload.access).to.equal('auth');
+            done();
+          })
+          .catch(e => done(e));
+      });
+  });
+  it('should reejct invalid login', done => {
+    request(app)
+      .post('/users/login')
+      .send({
+        email: users[1].email,
+        password: 'somethingNotValid'
+      })
+      .expect(400)
+      .expect(res => {
+        console.log(res);
+        expect(res.headers['x-auth']).to.not.exist();
+      })
       .end(done);
   });
 });
